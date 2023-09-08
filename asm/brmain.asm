@@ -74,7 +74,7 @@ Lmain:
 .show_epilogue:
 	call Pputs
 	
-	mov dh, 127	; Load max number of sectors
+	mov dh, 1		; # of sectors
 	mov bx, 9000h	; Where to place sector data
 	call Pdisk_load
 
