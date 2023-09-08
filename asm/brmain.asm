@@ -10,6 +10,14 @@ org 0x7C00
 bits 16
 
 %define ENDL 0x0D, 0x0A
+%define BIOS_TTY_WRITE 0eh
+%define BIOS_READ_CHARACTER 0h
+%define BIOS_VIDEO_SERVICE 10h
+%define BIOS_KBD_SERVICE 16h
+%define BIOS_DISK_SERVICE 13h
+%define BIOS_DISK_READ 02h
+%define FLOPPY_DRIVENUM 0h
+%define HDD_DRIVENUM 80h
 
 start:
 	jmp Lmain
@@ -36,8 +44,8 @@ Pputs:
 	jz .epilogue
 
     ;; BIOS interrupt to print character in al
-	mov ah, 0x0e
-    int 0x10
+	mov ah, BIOS_TTY_WRITE
+    int BIOS_VIDEO_SERVICE
 
 	jmp Pputs
 .epilogue:
@@ -61,12 +69,12 @@ Lmain:
 	mov si, Sunknown_media
 
 	; Check for floppy
-	cmp dl, 0h
+	cmp dl, FLOPPY_DRIVENUM
 	mov ax, Smedia_floppy
 	cmove si, ax
 
 	; Check for HDD
-	cmp dl, 80h
+	cmp dl, HDD_DRIVENUM
 	mov ax, Smedia_hdd
 	cmove si, ax
 	
@@ -93,9 +101,9 @@ Lfatal:
 	jmp Lstop
 
 Lwait_key_and_reboot:
-	mov ah, 0
-	int 16h			; Wait for keypress
-	jmp 0FFFFh:0	; Jump to beginning of BIOS. Should reboot.
+	mov ah, BIOS_READ_CHARACTER
+	int BIOS_KBD_SERVICE		; Wait for keypress
+	jmp 0FFFFh:0				; Jump to beginning of BIOS. Should reboot.
 
 ; receiving the data in 'dx'
 ; For the examples we'll assume that we're called with dx=0x1234
@@ -121,7 +129,7 @@ hex_loop:
     add al, 7 ; 'A' is ASCII 65 instead of 58, so 65-58=7
 
 step2:
-    ; 2. get the correct position of the string to place our ASCII char
+pppp    ; 2. get the correct position of the string to place our ASCII char
     ; bx <- base address + string length - index of char
     mov bx, HEX_OUT + 5 ; base + length
     sub bx, cx  ; our index variable
