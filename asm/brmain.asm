@@ -15,6 +15,7 @@ bits 16
 %define BIOS_VIDEO_SERVICE 10h
 %define BIOS_KBD_SERVICE 16h
 %define BIOS_DISK_SERVICE 13h
+%define BIOS_DRIVE_PARAMETERS 08h
 %define BIOS_DISK_READ 02h
 %define FLOPPY_DRIVENUM 0h
 %define HDD_DRIVENUM 80h
@@ -89,8 +90,6 @@ Lmain:
 
 	mov si, Ssuccess
 	call Pputs
-
-	nop
 Lstop:
 	cli
 	hlt
@@ -129,7 +128,7 @@ hex_loop:
     add al, 7 ; 'A' is ASCII 65 instead of 58, so 65-58=7
 
 step2:
-pppp    ; 2. get the correct position of the string to place our ASCII char
+    ; 2. get the correct position of the string to place our ASCII char
     ; bx <- base address + string length - index of char
     mov bx, HEX_OUT + 5 ; base + length
     sub bx, cx  ; our index variable

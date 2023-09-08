@@ -1,6 +1,5 @@
 Sdisk_error: db "Fatal disk error.",ENDL,0
-
-sectors_per_track:	
+Sdisk_params_error:	db "Cannot read disk parameters.",ENDL,0
 
 ; Convert LBA to CHS
 ; Arguments:
@@ -10,7 +9,42 @@ sectors_per_track:
 ; 	- dh (H) The head
 ;	- cl (S) The sector
 Plba2chs:
-	ret 
+	ret
+
+; Get BIOS disk parameters
+; Arguments:
+;   - dl Drive number
+; Clobbers:
+;   - ah BIOS call return code
+;   - dl Number of HDDs
+;   - dh Head count - 1
+;   - cx
+;       [7:6] [15:8] Cylinder count - 1
+;       [5:0] Sectors per track
+;   - cf 0
+Pdiskparams:
+	push es
+	push di
+	push bx
+
+	mov ah, BIOS_DRIVE_PARAMETERS
+	; reset es:di because of some buggy BIOS:s
+	xor di, di
+	mov es, di
+
+	stc
+	int BIOS_DISK_SERVICE
+	jc .error
+.epilogue:
+	pop bx
+	pop di
+	pop es
+
+	ret
+.error:
+	mov si, Sdisk_params_error
+	call Pputs
+	jmp Lfatal
 
 ; Load a number of sectors from disk
 ; Arguments:
@@ -19,6 +53,7 @@ Plba2chs:
 ;	- es:bx Where to place sector data
 ; Clobbers:
 ; 	- [es:bx] Sector data
+;   - cf 0
 Pdisk_load:
 	pusha					; BIOS just decides to mess with registers sometimes
 	push dx					; The parameters will be overwritten when reading from disk
@@ -35,7 +70,6 @@ Pdisk_load:
 	mov si, Sdisk_error
 	jc .error				; Carry will be set on BIOS error
 
-	; TODO: Use just one popa and pusha instead??
 	pop dx					; Restore arguments
 	cmp al, dh				; BIOS sets al to # of sectors read
 	mov si, Ssectors_error
