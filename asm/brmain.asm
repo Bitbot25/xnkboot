@@ -14,14 +14,14 @@ bits 16
 start:
 	jmp Lmain
 
-Sstartup: db "XNK loading...",ENDL,0
-Spress_to_reboot: db "Press any key to reboot...",ENDL,0
-Sfatal: db "Fatal error: press any key to reboot...",ENDL,0
-Ssectors_error: db "BIOS read wrong number of sectors.",ENDL,0
-Ssuccess: db "Success!",ENDL,0
-Sunknown_media: db "XNK: Could not detect boot media",ENDL,0
-Smedia_floppy: db "XNK: Floppy device detected",ENDL,0
-Smedia_hdd:	db "XNK: HDD device detected",ENDL,0
+Sstartup: db "XNK: loading...",ENDL,0
+Spress_to_reboot: db "XNK: Press any key to reboot...",ENDL,0
+Sfatal: db "XNK: Fatal error: press any key to reboot...",ENDL,0
+Ssectors_error: db "XNK: BIOS read wrong number of sectors.",ENDL,0
+Ssuccess: db "XNK: boot success",ENDL,0
+Sunknown_media: db "XNK: could not detect boot media",ENDL,0
+Smedia_floppy: db "XNK: floppy device detected",ENDL,0
+Smedia_hdd:	db "XNK: hdd device detected",ENDL,0
 
 ; Print a string to BIOS TTY
 ; Parameters:
