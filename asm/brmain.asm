@@ -57,21 +57,19 @@ Lmain:
 	mov si, Sstartup
     call Pputs
 
+	; Code to display boot media
 	mov si, Sunknown_media
 
+	; Check for floppy
 	cmp dl, 0h
-	je .show_floppy
+	mov ax, Smedia_floppy
+	cmove si, ax
 
+	; Check for HDD
 	cmp dl, 80h
-	je .show_hdd
-
-	jmp .show_epilogue
-.show_floppy:
-	mov si, Smedia_floppy
-	jmp .show_epilogue
-.show_hdd:
-	mov si, Smedia_hdd
-.show_epilogue:
+	mov ax, Smedia_hdd
+	cmove si, ax
+	
 	call Pputs
 	
 	mov dh, 1		; # of sectors
