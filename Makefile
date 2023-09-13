@@ -19,10 +19,6 @@ clean:
 	rm -rf $(BUILD_DIR)
 	cargo clean
 
-$(ASM_SRC)/bios.asm:
-	echo "> ERROR: Could not find source file bios.asm"
-	@exit 1
-
 $(IMG_FILE): $(BUILD_DIR)/brmain.bin
 	@echo "> Creating zeroed image..."
 	@dd if=/dev/zero of=$(IMG_FILE) bs=512 count=2880
