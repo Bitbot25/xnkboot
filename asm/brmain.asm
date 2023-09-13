@@ -20,16 +20,31 @@ bits 16
 %define FLOPPY_DRIVENUM 0h
 %define HDD_DRIVENUM 80h
 
+
+%define DISK_DATA 9000h
+%define BLKCNT 127
+
 start:
 	jmp Lmain
 
 Sstartup: db "XNK: loading...",ENDL,0
 Spress_to_reboot: db "XNK: Press any key to reboot...",ENDL,0
-Sfatal: db "XNK: fatal error",0
+Sfatal: db "XNK: bios error: ",0
+Sincompat: db "XNK: incompatible disk device",ENDL,0
 Sunknown_media: db "XNK: could not detect boot media",ENDL,0
-Smedia_floppy: db "XNK: floppy device detected",ENDL,0
-Smedia_hdd:	db "XNK: hdd device detected",ENDL,0
+Smedia_floppy: db "XNK: floppy devices not supported",ENDL,0
+Smedia_hdd: db "XNK: hdd device detected",ENDL,0
 Sdone: db "XNK: Success",ENDL,0
+
+dap:
+	db 0x10
+	db 0x00
+da_blkcnt:
+	dw BLKCNT
+da_buf:
+	dd DISK_DATA
+da_lba:
+	dq 1
 
 ; Print a string to BIOS TTY
 ; Parameters:
@@ -59,58 +74,36 @@ Lmain:
 
 	; stack setup
 	mov ss, ax		; first segment
-	mov sp, 0x7C00	; usable stack memory (bios starts after)
+	mov sp, 0x7C00		; usable stack memory
 
 	; print startup message
 	mov si, Sstartup
 	call Pputs
 
-	mov si, Sunknown_media
+	mov ah, 41h
+	mov bx, 55AAh
+	stc
+	int 13h
+	jc Lincompat
 
-	; Check for floppy
-	cmp dl, FLOPPY_DRIVENUM
-	mov ax, Smedia_floppy
-	cmove si, ax
+	mov ah, 0x42
+	mov si, dap
+	stc
+	int 0x13
+	jc Lfatal
 
-	; Check for HDD
-	cmp dl, HDD_DRIVENUM
-	mov ax, Smedia_hdd
-	cmove si, ax
+	add dword [da_buf], 0xfe00		; 512*127 = 0xfe00
 
-	call Pputs	; print boot media
-	
-	push dx
-	call Pdiskparams
+	mov ah, 0x42
+	mov si, dap
+	stc
+	int 0x13
+	jc Lfatal
 
-	pop ax
-	mov dl, al
-
-	inc dh
-
-%define LBA 1
-%define DEST_ADDR 0x9000
-%define NLOAD 2
-	mov ax, LBA
-	call Plba2chs
-
-	; mov bx, DEST_ADDR
-	; mov cx, 2
-	; mov ch, 0
-	; mov dh, 0
-	; mov al, 2
-
-	; DH IS WRONG!!
-	mov bx, DEST_ADDR
-			; Sector is already set in cx
-	mov ch, al	; Set cylinder
-	mov dh, ah	; Set head
-	mov al, NLOAD
-	call Pdisk_load
-
-	mov dx, [DEST_ADDR]
+	mov dx, [DISK_DATA]
 	call print_hex
-
-	mov dx, [DEST_ADDR+512]
+	
+	mov dx, [DISK_DATA+512]
 	call print_hex
 
 	mov si, Sdone
@@ -120,10 +113,18 @@ Lstop:
 	hlt
 	jmp Lstop
 Lfatal:
+	push ax
 	mov si, Sfatal
 	call Pputs
+	pop ax
+	xor dx, dx
+	mov dl, ah
+	call print_hex
 	jmp Lstop
-
+Lincompat:
+	mov si, Sincompat
+	call Pputs
+	jmp Lstop
 Lwait_key_and_reboot:
 	mov ah, BIOS_READ_CHARACTER
 	int BIOS_KBD_SERVICE		; Wait for keypress
