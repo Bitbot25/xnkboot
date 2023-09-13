@@ -21,30 +21,47 @@ bits 16
 %define HDD_DRIVENUM 80h
 
 
-%define DISK_DATA 9000h
 %define BLKCNT 127
+
+struc dap
+	.size	resb 1
+	.magic	resb 1
+	.blkcnt	resw 1
+	.buf	resd 1
+	.lba	resq 1
+endstruc
 
 start:
 	jmp Lmain
 
-Sstartup: db "XNK: loading...",ENDL,0
+Sstartup: db "XNK: Loading...",ENDL,0
 Spress_to_reboot: db "XNK: Press any key to reboot...",ENDL,0
-Sfatal: db "XNK: bios error: ",0
-Sincompat: db "XNK: incompatible disk device",ENDL,0
-Sunknown_media: db "XNK: could not detect boot media",ENDL,0
-Smedia_floppy: db "XNK: floppy devices not supported",ENDL,0
-Smedia_hdd: db "XNK: hdd device detected",ENDL,0
+Sfatal: db "XNK: BIOS error: ",0
+Sincompat: db "XNK: Incompatible disk device",ENDL,0
+Sunknown_media: db "XNK: Could not detect boot media",ENDL,0
+Smedia_floppy: db "XNK: Floppy devices not supported",ENDL,0
+Smedia_hdd: db "XNK: HDD device detected",ENDL,0
 Sdone: db "XNK: Success",ENDL,0
 
-dap:
-	db 0x10
-	db 0x00
-da_blkcnt:
-	dw BLKCNT
-da_buf:
-	dd DISK_DATA
-da_lba:
-	dq 1
+; Disk address packet
+;dap:
+;	db 0x10
+;	db 0x00
+;da_blkcnt:
+;	dw BLKCNT
+;da_buf:
+;	dd DISK_DATA
+;da_lba:
+;	dq 1
+
+gdap:
+	istruc dap
+		at .size,	db	10h
+		at .magic,	db	0h
+		at .blkcnt,	dw	BLKCNT
+		at .buf,	dd	9000h
+		at .lba,	dq	1
+	iend
 
 ; Print a string to BIOS TTY
 ; Parameters:
@@ -87,23 +104,23 @@ Lmain:
 	jc Lincompat
 
 	mov ah, 0x42
-	mov si, dap
+	mov si, gdap
 	stc
 	int 0x13
 	jc Lfatal
 
-	add dword [da_buf], 0xfe00		; 512*127 = 0xfe00
+	add dword [gdap+dap.buf], 0xfe00		; 512*127 = 0xfe00
 
 	mov ah, 0x42
-	mov si, dap
+	mov si, gdap
 	stc
 	int 0x13
 	jc Lfatal
 
-	mov dx, [DISK_DATA]
+	mov dx, [9000h]
 	call print_hex
 	
-	mov dx, [DISK_DATA+512]
+	mov dx, [9000h+512]
 	call print_hex
 
 	mov si, Sdone
