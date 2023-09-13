@@ -25,12 +25,11 @@ start:
 
 Sstartup: db "XNK: loading...",ENDL,0
 Spress_to_reboot: db "XNK: Press any key to reboot...",ENDL,0
-Sfatal: db "XNK: Fatal error: press any key to reboot...",ENDL,0
-Ssectors_error: db "XNK: BIOS read wrong number of sectors.",ENDL,0
-Ssuccess: db "XNK: boot success",ENDL,0
+Sfatal: db "XNK: fatal error",0
 Sunknown_media: db "XNK: could not detect boot media",ENDL,0
 Smedia_floppy: db "XNK: floppy device detected",ENDL,0
 Smedia_hdd:	db "XNK: hdd device detected",ENDL,0
+Sdone: db "XNK: Success",ENDL,0
 
 ; Print a string to BIOS TTY
 ; Parameters:
@@ -46,7 +45,7 @@ Pputs:
 
     ;; BIOS interrupt to print character in al
 	mov ah, BIOS_TTY_WRITE
-    int BIOS_VIDEO_SERVICE
+	int BIOS_VIDEO_SERVICE
 
 	jmp Pputs
 .epilogue:
@@ -64,9 +63,8 @@ Lmain:
 
 	; print startup message
 	mov si, Sstartup
-    call Pputs
+	call Pputs
 
-	; Code to display boot media
 	mov si, Sunknown_media
 
 	; Check for floppy
@@ -78,17 +76,44 @@ Lmain:
 	cmp dl, HDD_DRIVENUM
 	mov ax, Smedia_hdd
 	cmove si, ax
+
+	call Pputs	; print boot media
 	
-	call Pputs
-	
-	mov dh, 1		; # of sectors
-	mov bx, 9000h	; Where to place sector data
+	push dx
+	call Pdiskparams
+
+	pop ax
+	mov dl, al
+
+	inc dh
+
+%define LBA 1
+%define DEST_ADDR 0x9000
+%define NLOAD 2
+	mov ax, LBA
+	call Plba2chs
+
+	; mov bx, DEST_ADDR
+	; mov cx, 2
+	; mov ch, 0
+	; mov dh, 0
+	; mov al, 2
+
+	; DH IS WRONG!!
+	mov bx, DEST_ADDR
+			; Sector is already set in cx
+	mov ch, al	; Set cylinder
+	mov dh, ah	; Set head
+	mov al, NLOAD
 	call Pdisk_load
 
-	mov dx, [9000h]
+	mov dx, [DEST_ADDR]
 	call print_hex
 
-	mov si, Ssuccess
+	mov dx, [DEST_ADDR+512]
+	call print_hex
+
+	mov si, Sdone
 	call Pputs
 Lstop:
 	cli
@@ -156,4 +181,7 @@ HEX_OUT:
 ; Pad code to 510 bytes
 times 510-($-$$) db 0
 ; BIOS magic flag (2 bytes)
+
 dw 0AA55h
+times 256 dw 0xdead
+times 256 dw 0xbeef
