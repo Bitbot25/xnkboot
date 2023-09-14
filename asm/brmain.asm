@@ -15,12 +15,9 @@ bits 16
 %define BIOS_VIDEO_SERVICE 10h
 %define BIOS_KBD_SERVICE 16h
 %define BIOS_DISK_SERVICE 13h
-%define BIOS_DRIVE_PARAMETERS 08h
-%define BIOS_DISK_READ 02h
-%define FLOPPY_DRIVENUM 0h
-%define HDD_DRIVENUM 80h
+%define BIOS_EXT_DISK_READ 42h
 
-
+%define BLKSIZE 512
 %define BLKCNT 127
 
 struc dap
@@ -42,17 +39,6 @@ Sunknown_media: db "XNK: Could not detect boot media",ENDL,0
 Smedia_floppy: db "XNK: Floppy devices not supported",ENDL,0
 Smedia_hdd: db "XNK: HDD device detected",ENDL,0
 Sdone: db "XNK: Success",ENDL,0
-
-; Disk address packet
-;dap:
-;	db 0x10
-;	db 0x00
-;da_blkcnt:
-;	dw BLKCNT
-;da_buf:
-;	dd DISK_DATA
-;da_lba:
-;	dq 1
 
 gdap:
 	istruc dap
@@ -82,7 +68,21 @@ Pputs:
 	jmp Pputs
 .epilogue:
 	ret
-	
+
+; Load sectors from disk
+; Parameters are placed in the global DAP
+; Clobbers:
+;   - ah BIOS return code
+;   - si Pointer to global DAP
+Pload:
+	mov ah, BIOS_EXT_DISK_READ
+	mov si, gdap
+	stc
+	int BIOS_DISK_SERVICE
+	jc Lfatal
+
+	ret
+
 Lmain:
 	; zero-initialize segment registers
 	xor ax, ax
@@ -90,7 +90,7 @@ Lmain:
 	mov es, ax
 
 	; stack setup
-	mov ss, ax		; first segment
+	mov ss, ax			; first segment
 	mov sp, 0x7C00		; usable stack memory
 
 	; print startup message
@@ -100,22 +100,14 @@ Lmain:
 	mov ah, 41h
 	mov bx, 55AAh
 	stc
-	int 13h
+	int BIOS_DISK_SERVICE
 	jc Lincompat
 
-	mov ah, 0x42
-	mov si, gdap
-	stc
-	int 0x13
-	jc Lfatal
+	call Pload	; load first batch
 
-	add dword [gdap+dap.buf], 0xfe00		; 512*127 = 0xfe00
+	mov dword [gdap+dap.buf], 2*BLKSIZE*BLKCNT	; advance buffer
 
-	mov ah, 0x42
-	mov si, gdap
-	stc
-	int 0x13
-	jc Lfatal
+	call Pload	; load second batch
 
 	mov dx, [9000h]
 	call print_hex
@@ -193,8 +185,6 @@ end:
 
 HEX_OUT:
     db '0x0000',ENDL,0 ; reserve memory for our new string
-
-%include "asm/brdisk.asm"
 
 ; Pad code to 510 bytes
 times 510-($-$$) db 0
