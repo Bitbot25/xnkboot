@@ -1,9 +1,11 @@
 NASM=nasm
+QEMU=qemu-system-x86_64
 
 ASM_SRC=asm
-QEMU=qemu-system-x86_64
 BUILD_DIR=build
+
 IMG_FILE=$(BUILD_DIR)/boot.img
+BOOTREC_SRC=$(ASM_SRC)/bootrec.asm
 
 all: clean build
 
@@ -19,14 +21,14 @@ clean:
 	rm -rf $(BUILD_DIR)
 	cargo clean
 
-$(IMG_FILE): $(BUILD_DIR)/brmain.bin
+$(IMG_FILE): $(BUILD_DIR)/boot.bin
 	@echo "> Creating zeroed image..."
 	@dd if=/dev/zero of=$(IMG_FILE) bs=512 count=2880
 	@echo "> Copying boot record..."
-	@dd if=$(BUILD_DIR)/brmain.bin of=$(IMG_FILE) conv=notrunc
+	@dd if=$(BUILD_DIR)/boot.bin of=$(IMG_FILE) conv=notrunc
 	@echo "> Boot image built."
 
-$(BUILD_DIR)/brmain.bin: $(ASM_SRC)/brmain.asm
-	$(NASM) $(ASM_SRC)/brmain.asm -f bin -o $@
+$(BUILD_DIR)/boot.bin: $(BOOTREC_SRC)
+	$(NASM) $(BOOTREC_SRC) -f bin -o $@
 
 .PHONY: qemu setup all clean build
