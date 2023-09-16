@@ -9,7 +9,7 @@ BOOTREC_SRC=$(ASM_SRC)/bootrec.asm
 
 all: clean build
 
-qemu: $(IMG_FILE)
+qemu: build
 	$(QEMU) -drive format=raw,file=$(IMG_FILE)
 
 build: setup $(IMG_FILE)
