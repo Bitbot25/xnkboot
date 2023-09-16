@@ -5,8 +5,8 @@ bits 32
 %define CHVIDEO_H 80
 %define CHVIDEO_V 25
 
-init_pm:
-	mov ax, DATA_SEGOFF
+pm_start:
+	mov ax, DATA_SEGSEL
 	mov ds, ax
 	mov ss, ax
 	mov es, ax
@@ -20,7 +20,6 @@ init_pm:
 
 	mov ebx, Spm
 	call pm_puts
-
 .halt:
 	cli
 	hlt

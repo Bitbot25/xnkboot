@@ -5,11 +5,11 @@
 ; | 510 bytes of code | | 0x0AA55h (2 bytes) |
 ; --------------------- ----------------------
 
+; BIOS loads program at 0x7C00
 org 0x7C00
-; BIOS starts in real mode (e.g. 16-bit)
+; Computer starts in real mode
 bits 16
 
-%define ENDL 0x0D, 0x0A
 %define BIOS_TTY_WRITE 0eh
 %define BIOS_READ_CHARACTER 0h
 %define BIOS_VIDEO_SERVICE 10h
@@ -19,6 +19,8 @@ bits 16
 
 %define BLKSIZE 512
 %define BLKCNT 16
+
+%define ENDL 0x0D, 0x0A
 
 struc dap
 	.size	resb 1

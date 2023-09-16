@@ -27,6 +27,6 @@ gdtr:
 	dw gdt_end - gdt_start - 1	; GDT size (-1)
 	dd gdt_start				; address
 
-%define CODE_SEGOFF gdt_code - gdt_start
-%define DATA_SEGOFF gdt_data - gdt_start
+%define CODE_SEGSEL gdt_code - gdt_start
+%define DATA_SEGSEL gdt_data - gdt_start
 	
