@@ -20,6 +20,8 @@ bits 16
 %define BLKSIZE 512
 %define BLKCNT 127
 
+%define KOFF 0x9000
+
 struc dap
 	.size	resb 1
 	.magic	resb 1
@@ -34,10 +36,9 @@ start:
 Sstartup: db "XNK: Loading...",ENDL,0
 Spress_to_reboot: db "XNK: Press any key to reboot...",ENDL,0
 Sfatal: db "XNK: BIOS error: ",0
+Sjump: db "J",ENDL,0
 Sincompat: db "XNK: Incompatible disk device",ENDL,0
 Sunknown_media: db "XNK: Could not detect boot media",ENDL,0
-Smedia_floppy: db "XNK: Floppy devices not supported",ENDL,0
-Smedia_hdd: db "XNK: HDD device detected",ENDL,0
 Sdone: db "XNK: Success",ENDL,0
 
 gdap:
@@ -45,7 +46,7 @@ gdap:
 		at .size,	db	10h
 		at .magic,	db	0h
 		at .blkcnt,	dw	BLKCNT
-		at .buf,	dd	9000h
+		at .buf,	dd	KOFF
 		at .lba,	dq	1
 	iend
 
@@ -83,6 +84,7 @@ Pload:
 
 	ret
 
+%include "asm/gdt.asm"
 Lmain:
 	; zero-initialize segment registers
 	xor ax, ax
@@ -105,18 +107,17 @@ Lmain:
 
 	call Pload	; load first batch
 
-	mov dword [gdap+dap.buf], 2*BLKSIZE*BLKCNT	; advance buffer
+	cli
+	lgdt [gdt_descriptor]
 
-	call Pload	; load second batch
-
-	mov dx, [9000h]
-	call print_hex
-	
-	mov dx, [9000h+512]
-	call print_hex
-
-	mov si, Sdone
+	mov si, Sjump
 	call Pputs
+
+	mov eax, cr0
+	or eax, 0x1
+	mov cr0, eax
+
+	jmp CODE_SEGOFF:init_pm
 Lstop:
 	cli
 	hlt
@@ -134,10 +135,8 @@ Lincompat:
 	mov si, Sincompat
 	call Pputs
 	jmp Lstop
-Lwait_key_and_reboot:
-	mov ah, BIOS_READ_CHARACTER
-	int BIOS_KBD_SERVICE		; Wait for keypress
-	jmp 0FFFFh:0				; Jump to beginning of BIOS. Should reboot.
+
+%include "asm/pm.asm"
 
 ; receiving the data in 'dx'
 ; For the examples we'll assume that we're called with dx=0x1234
@@ -191,5 +190,11 @@ times 510-($-$$) db 0
 ; BIOS magic flag (2 bytes)
 
 dw 0AA55h
+
+sect2:
+	mov si, Sdone
+	call Pputs
+	jmp Lstop
+
 times 256 dw 0xdead
 times 256 dw 0xbeef
