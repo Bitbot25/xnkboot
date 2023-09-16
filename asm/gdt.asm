@@ -23,7 +23,7 @@ gdt_data:
     db 0x0
 gdt_end:
 
-gdt_descriptor:
+gdtr:
 	dw gdt_end - gdt_start - 1	; GDT size (-1)
 	dd gdt_start				; address
 
